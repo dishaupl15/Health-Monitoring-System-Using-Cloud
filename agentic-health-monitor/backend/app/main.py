@@ -8,6 +8,7 @@ from app.routes.assess import router as assess_router
 from app.routes.save_report import router as save_report_router
 from app.routes.history import router as history_router
 from app.routes.rag import router as rag_router
+from app.routes.share import router as share_router
 from app.db.database import init_db
 
 load_dotenv()
@@ -45,6 +46,7 @@ app.include_router(assess_router)
 app.include_router(save_report_router)
 app.include_router(history_router)
 app.include_router(rag_router)
+app.include_router(share_router)
 
 @app.get('/')
 def read_root():

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PageShell from '../components/PageShell.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 
@@ -17,6 +18,7 @@ function Field({ label, required, children }) {
 }
 
 export default function Signup() {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ full_name: '', age: '', email: '', password: '' })
   const [isLoading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -32,38 +34,33 @@ export default function Signup() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
     })
-
     if (signUpError) {
       setError(signUpError.message)
       setLoading(false)
       return
     }
-
     const userId = data.user?.id
     if (userId) {
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({ id: userId, full_name: form.full_name, age: Number(form.age) })
-
       if (profileError) {
         setError(profileError.message)
         setLoading(false)
         return
       }
     }
-
     setSuccess(true)
     setLoading(false)
     setTimeout(() => navigate('/login'), 2500)
   }
 
   return (
-    <PageShell title="Create Account" description="Sign up to start your AI-powered health assessments.">
+    <PageShell title={t('signup.title')} description={t('signup.description')}>
       <div className="mx-auto max-w-md">
         <div className="p-8" style={cardStyle}>
 
@@ -76,37 +73,37 @@ export default function Signup() {
                 </svg>
               </div>
               <div>
-                <p className="text-white font-semibold text-lg">Account created!</p>
-                <p className="text-slate-400 text-sm mt-1">Check your email to confirm, then log in.</p>
+                <p className="text-white font-semibold text-lg">{t('signup.successTitle')}</p>
+                <p className="text-slate-400 text-sm mt-1">{t('signup.successDesc')}</p>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
-              <Field label="Full Name" required>
+              <Field label={t('signup.fullName')} required>
                 <input
                   name="full_name" value={form.full_name} onChange={handleChange}
-                  required placeholder="Enter your full name" className="input-field"
+                  required placeholder={t('signup.namePlaceholder')} className="input-field"
                 />
               </Field>
 
-              <Field label="Age" required>
+              <Field label={t('signup.age')} required>
                 <input
                   type="number" name="age" value={form.age} onChange={handleChange}
-                  required min="1" max="120" placeholder="e.g. 28" className="input-field"
+                  required min="1" max="120" placeholder={t('signup.agePlaceholder')} className="input-field"
                 />
               </Field>
 
-              <Field label="Email" required>
+              <Field label={t('signup.email')} required>
                 <input
                   type="email" name="email" value={form.email} onChange={handleChange}
-                  required placeholder="you@example.com" className="input-field"
+                  required placeholder={t('signup.emailPlaceholder')} className="input-field"
                 />
               </Field>
 
-              <Field label="Password" required>
+              <Field label={t('signup.password')} required>
                 <input
                   type="password" name="password" value={form.password} onChange={handleChange}
-                  required minLength={6} placeholder="Min. 6 characters" className="input-field"
+                  required minLength={6} placeholder={t('signup.passwordPlaceholder')} className="input-field"
                 />
               </Field>
 
@@ -127,14 +124,14 @@ export default function Signup() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Creating account...
+                    {t('signup.submitting')}
                   </>
-                ) : 'Create Account'}
+                ) : t('signup.submit')}
               </button>
 
               <p className="text-center text-sm text-slate-400">
-                Already have an account?{' '}
-                <Link to="/login" className="text-brand-400 hover:text-white transition-colors">Log in</Link>
+                {t('signup.hasAccount')}{' '}
+                <Link to="/login" className="text-brand-400 hover:text-white transition-colors">{t('signup.loginLink')}</Link>
               </p>
             </form>
           )}

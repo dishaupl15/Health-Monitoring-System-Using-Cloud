@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PageShell from '../components/PageShell.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 
@@ -17,6 +18,7 @@ function Field({ label, required, children }) {
 }
 
 export default function Login() {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ email: '', password: '' })
   const [isLoading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -31,38 +33,35 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
     })
-
     if (signInError) {
       setError(signInError.message)
       setLoading(false)
       return
     }
-
     navigate('/')
   }
 
   return (
-    <PageShell title="Welcome Back" description="Log in to continue your AI-powered health assessments.">
+    <PageShell title={t('login.title')} description={t('login.description')}>
       <div className="mx-auto max-w-md">
         <div className="p-8" style={cardStyle}>
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            <Field label="Email" required>
+            <Field label={t('login.email')} required>
               <input
                 type="email" name="email" value={form.email} onChange={handleChange}
-                required placeholder="you@example.com" className="input-field"
+                required placeholder={t('login.emailPlaceholder')} className="input-field"
               />
             </Field>
 
-            <Field label="Password" required>
+            <Field label={t('login.password')} required>
               <input
                 type="password" name="password" value={form.password} onChange={handleChange}
-                required placeholder="Enter your password" className="input-field"
+                required placeholder={t('login.passwordPlaceholder')} className="input-field"
               />
             </Field>
 
@@ -83,14 +82,14 @@ export default function Login() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Logging in...
+                  {t('login.submitting')}
                 </>
-              ) : 'Log In'}
+              ) : t('login.submit')}
             </button>
 
             <p className="text-center text-sm text-slate-400">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-brand-400 hover:text-white transition-colors">Sign up</Link>
+              {t('login.noAccount')}{' '}
+              <Link to="/signup" className="text-brand-400 hover:text-white transition-colors">{t('login.signupLink')}</Link>
             </p>
 
           </form>

@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PageShell from '../components/PageShell.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { generateReportPDF } from '../services/generatePDF.js'
+import { shareReport } from '../services/api.js'
 
 const riskConfig = {
   Emergency: { color: '#f87171', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.3)', dot: '#f87171', icon: '🚨' },
@@ -13,29 +16,42 @@ const riskConfig = {
 const cardStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }
 const innerCard = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.75rem' }
 
-function ScoreBar({ score }) {
-  const pct = Math.round(score * 100)
-  const grad = pct >= 80 ? 'linear-gradient(90deg,#ef4444,#f87171)' : pct >= 60 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#0694a2,#16bdca)'
+function normalizeScores(conditions) {
+  if (!conditions?.length) return []
+  const total = conditions.reduce((s, c) => s + (c.score || 0), 0)
+  return conditions
+    .map(c => ({ ...c, pct: total > 0 ? Math.round((c.score / total) * 100) : 0 }))
+    .sort((a, b) => b.pct - a.pct)
+}
+
+function ConfidenceBar({ pct, rank, likelihood }) {
+  const color = pct >= 60 ? '#f87171' : pct >= 35 ? '#fbbf24' : '#34d399'
+  const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉'
   return (
-    <div className="mt-2">
-      <div className="flex justify-between mb-1">
-        <span className="text-xs text-slate-500">Risk score</span>
-        <span className="text-xs font-bold text-slate-300">{pct}%</span>
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-slate-400">{medal} {likelihood}</span>
+        <span className="text-sm font-black" style={{ color }}>{pct}%</span>
       </div>
-      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: grad }} />
+      <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+        <div className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}99, ${color})` }} />
       </div>
     </div>
   )
 }
 
 export default function Report() {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const state = location.state
   const [isSaved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
+  const [shareLoading, setShareLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
   const saveCalledRef = useRef(false)
 
   if (!state?.report || !state?.form) return <Navigate to="/" replace />
@@ -44,7 +60,6 @@ export default function Report() {
   const followUpAnswers = report.follow_up_answers || state.follow_up_answers || {}
   const risk = riskConfig[report.risk_level] || riskConfig.Low
 
-  // Auto-save once on load
   useEffect(() => {
     if (saveCalledRef.current) return
     saveCalledRef.current = true
@@ -70,7 +85,7 @@ export default function Report() {
     setError('')
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user?.id) {
-      setError('You must be logged in to save.')
+      setError(t('report.mustBeLoggedIn'))
       setLoading(false)
       return
     }
@@ -87,8 +102,31 @@ export default function Report() {
     setLoading(false)
   }
 
+  const handleShare = async () => {
+    if (shareUrl) { copyLink(shareUrl); return }
+    setShareLoading(true)
+    setError('')
+    try {
+      const { token } = await shareReport({ ...report, follow_up_answers: followUpAnswers }, form)
+      const url = `${window.location.origin}/shared/${token}`
+      setShareUrl(url)
+      copyLink(url)
+    } catch {
+      setError(t('report.shareError'))
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  const copyLink = (url) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
+
   return (
-    <PageShell title="Final Assessment Report" description="Your AI-generated health assessment based on symptoms and follow-up answers.">
+    <PageShell title={t('report.title')} description={t('report.description')}>
       <div className="space-y-6">
 
         {/* Risk banner */}
@@ -97,12 +135,12 @@ export default function Report() {
             <div className="flex items-center gap-4">
               <div className="text-4xl">{risk.icon}</div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Overall Risk Level</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{t('report.overallRisk')}</p>
                 <p className="text-3xl font-black" style={{ color: risk.color }}>{report.risk_level}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-6">
-              {[['Urgency', report.urgency || 'Routine monitoring'], ['Confidence', report.confidence], ['Patient', `${form.name}, ${form.age}`]].map(([label, val]) => (
+              {[[t('report.urgency'), report.urgency || t('report.routineMonitoring')], [t('report.confidence'), report.confidence], [t('report.patient'), `${form.name}, ${form.age}`]].map(([label, val]) => (
                 <div key={label} className="text-right">
                   <p className="text-xs text-slate-500 mb-1">{label}</p>
                   <p className="text-sm font-bold text-white">{val}</p>
@@ -115,26 +153,44 @@ export default function Report() {
         {/* Conditions + Explanation */}
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="p-6" style={cardStyle}>
-            <h2 className="section-title mb-4 flex items-center gap-2">
+            <h2 className="section-title mb-1 flex items-center gap-2">
               <svg className="h-4 w-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              Possible Conditions
+              {t('report.differentialDiagnosis')}
             </h2>
-            {report.possible_conditions?.length > 0 ? (
-              <div className="space-y-4">
-                {report.possible_conditions.map((c, i) => (
-                  <div key={i} className="p-4" style={innerCard}>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-semibold text-white">{c.name}</p>
-                      <span className="text-xs font-bold text-brand-400">{Math.round(c.score * 100)}%</span>
-                    </div>
-                    <ScoreBar score={c.score} />
+            <p className="text-xs text-slate-500 mb-4">{t('report.diagnosisNote')}</p>
+            {report.possible_conditions?.length > 0 ? (() => {
+              const ranked = normalizeScores(report.possible_conditions)
+              const summary = ranked.map(c => `${c.name} — ${c.pct}%`).join(' · ')
+              return (
+                <div className="space-y-3">
+                  <div className="px-4 py-2.5 rounded-xl text-xs text-slate-300 leading-relaxed"
+                    style={{ background: 'rgba(6,148,162,0.08)', border: '1px solid rgba(22,189,202,0.15)' }}>
+                    {summary}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">No specific conditions identified.</p>
+                  {ranked.map((c, i) => (
+                    <div key={i} className="p-4" style={innerCard}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                          <p className="text-sm font-semibold text-white">{c.name}</p>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          style={{
+                            background: c.pct >= 60 ? 'rgba(239,68,68,0.15)' : c.pct >= 35 ? 'rgba(245,158,11,0.15)' : 'rgba(52,211,153,0.15)',
+                            color: c.pct >= 60 ? '#f87171' : c.pct >= 35 ? '#fbbf24' : '#34d399',
+                          }}>
+                          {c.pct >= 60 ? t('report.mostLikely') : c.pct >= 35 ? t('report.possible') : t('report.lessLikely')}
+                        </span>
+                      </div>
+                      <ConfidenceBar pct={c.pct} rank={i} likelihood={t('report.likelihood')} />
+                    </div>
+                  ))}
+                </div>
+              )
+            })() : (
+              <p className="text-sm text-slate-400">{t('report.noConditions')}</p>
             )}
           </div>
 
@@ -144,7 +200,7 @@ export default function Report() {
                 <svg className="h-4 w-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Explanation
+                {t('report.explanation')}
               </h2>
               <p className="text-sm text-slate-300 leading-relaxed">{report.explanation}</p>
             </div>
@@ -153,7 +209,7 @@ export default function Report() {
                 <svg className="h-4 w-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Recommendation
+                {t('report.recommendation')}
               </h2>
               <p className="text-sm text-slate-300 leading-relaxed">{report.recommendation}</p>
               {report.next_steps?.length > 0 && (
@@ -183,7 +239,7 @@ export default function Report() {
               <svg className="h-4 w-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
-              Follow-Up Answers
+              {t('report.followUpAnswers')}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {Object.entries(followUpAnswers).map(([q, a]) => (
@@ -193,6 +249,22 @@ export default function Report() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Share link display */}
+        {shareUrl && (
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3"
+            style={{ background: 'rgba(6,148,162,0.1)', border: '1px solid rgba(22,189,202,0.3)' }}>
+            <svg className="h-4 w-4 shrink-0 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <p className="text-xs text-cyan-300 truncate flex-1">{shareUrl}</p>
+            <button onClick={() => copyLink(shareUrl)}
+              className="shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition-all"
+              style={{ background: 'rgba(22,189,202,0.2)', color: '#7edce2', border: '1px solid rgba(22,189,202,0.3)' }}>
+              {copied ? t('report.copiedBtn') : t('report.copyBtn')}
+            </button>
           </div>
         )}
 
@@ -212,20 +284,41 @@ export default function Report() {
             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Report saved successfully to history.
+            {t('report.savedSuccess')}
           </div>
         )}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button onClick={handleSave} disabled={loading || isSaved} className="btn-primary px-8 py-3.5">
             {loading ? (
-              <><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Saving...</>
-            ) : isSaved ? '✓ Saved' : (
-              <><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Save Report</>
+              <><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t('report.saving')}</>
+            ) : isSaved ? t('report.saved') : (
+              <><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>{t('report.saveReport')}</>
             )}
           </button>
-          <button onClick={() => navigate('/history')} className="btn-secondary px-6 py-3.5">View History</button>
-          <button onClick={() => navigate('/symptom-form')} className="btn-secondary px-6 py-3.5">New Assessment</button>
+
+          <button onClick={handleShare} disabled={shareLoading} className="btn-secondary px-6 py-3.5 flex items-center gap-2">
+            {shareLoading ? (
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            )}
+            {copied ? t('report.copied') : shareUrl ? t('report.copyLink') : t('report.shareReport')}
+          </button>
+
+          <button
+            onClick={() => generateReportPDF({ ...report, follow_up_answers: followUpAnswers }, form)}
+            className="btn-secondary px-6 py-3.5 flex items-center gap-2">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            {t('report.downloadPDF')}
+          </button>
+
+          <button onClick={() => navigate('/history')} className="btn-secondary px-6 py-3.5">{t('report.viewHistory')}</button>
+          <button onClick={() => navigate('/symptom-form')} className="btn-secondary px-6 py-3.5">{t('report.newAssessment')}</button>
         </div>
       </div>
     </PageShell>

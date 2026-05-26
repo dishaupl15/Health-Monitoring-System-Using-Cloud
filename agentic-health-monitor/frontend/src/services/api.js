@@ -39,3 +39,17 @@ export const getHistory = async () => {
   const response = await fetch(`${API_URL}/history`)
   return handleResponse(response)
 }
+
+export const shareReport = async (report, form) => {
+  const response = await fetch(`${API_URL}/share-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ report, form }),
+  })
+  return handleResponse(response)
+}
+
+export const getSharedReport = async (token) => {
+  const response = await fetch(`${API_URL}/shared/${token}`)
+  return handleResponse(response)
+}

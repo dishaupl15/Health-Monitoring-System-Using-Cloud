@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useLocation, useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PageShell from '../components/PageShell.jsx'
 import { finalAssessment } from '../services/api.js'
 
 const cardStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }
 
 export default function FollowUp() {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const payload = location.state
@@ -37,7 +39,7 @@ export default function FollowUp() {
       })
       navigate('/report', { state: { report: response, form, follow_up_answers: answers } })
     } catch (err) {
-      setError(err.message || 'Unable to complete assessment')
+      setError(err.message || t('common.assessmentError'))
     } finally {
       setLoading(false)
     }
@@ -54,7 +56,7 @@ export default function FollowUp() {
       : { background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', borderRadius: '9999px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: 600 }
 
   return (
-    <PageShell title="Follow-Up Questions" description="Answer these AI-generated questions to complete your health assessment.">
+    <PageShell title={t('followUp.title')} description={t('followUp.description')}>
       <div className="space-y-6">
 
         {/* Patient card */}
@@ -66,7 +68,7 @@ export default function FollowUp() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">{form.name} · {form.age} yrs · {form.gender}</p>
+            <p className="text-sm font-semibold text-white">{form.name} · {form.age} {t('common.yrs')} · {form.gender}</p>
             <p className="text-xs text-slate-400 truncate mt-0.5">{form.symptoms}</p>
           </div>
           <span style={severityStyle}>{form.severity}</span>
@@ -83,7 +85,7 @@ export default function FollowUp() {
                 </svg>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-brand-400 mb-1">AI Symptom Summary</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-brand-400 mb-1">{t('followUp.aiSummaryLabel')}</p>
                 <p className="text-sm text-slate-300 leading-relaxed">{summary}</p>
               </div>
             </div>
@@ -94,8 +96,8 @@ export default function FollowUp() {
         {questions.length > 0 && (
           <div className="p-4" style={cardStyle}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Progress</p>
-              <p className="text-xs font-bold text-brand-400">{answered}/{questions.length} answered</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('followUp.progress')}</p>
+              <p className="text-xs font-bold text-brand-400">{answered}/{questions.length} {t('followUp.answered')}</p>
             </div>
             <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
               <div className="h-full rounded-full transition-all duration-500"
@@ -121,7 +123,7 @@ export default function FollowUp() {
                       value={answers[`question_${index}`] || ''}
                       onChange={handleChange}
                       required
-                      placeholder="Type your answer here..."
+                      placeholder={t('followUp.answerPlaceholder')}
                       className="input-field"
                     />
                   </div>
@@ -131,8 +133,8 @@ export default function FollowUp() {
           ) : (
             <div className="p-8 text-center" style={cardStyle}>
               <div className="text-4xl mb-3">✅</div>
-              <p className="text-white font-semibold mb-1">No follow-up questions needed</p>
-              <p className="text-sm text-slate-400">Your symptoms are clear enough to proceed directly to the report.</p>
+              <p className="text-white font-semibold mb-1">{t('followUp.noQuestions')}</p>
+              <p className="text-sm text-slate-400">{t('followUp.noQuestionsDesc')}</p>
             </div>
           )}
 
@@ -154,18 +156,18 @@ export default function FollowUp() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Generating Report...
+                  {t('followUp.submitting')}
                 </>
               ) : (
                 <>
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Get Final Report
+                  {t('followUp.submit')}
                 </>
               )}
             </button>
-            <p className="text-xs text-slate-500">Your data is processed securely</p>
+            <p className="text-xs text-slate-500">{t('followUp.secureHint')}</p>
           </div>
         </form>
       </div>

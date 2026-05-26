@@ -1,15 +1,19 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabaseClient.js'
-
-const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/symptom-form', label: 'New Assessment' },
-  { to: '/history', label: 'History' },
-]
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 export default function PageShell({ title, description, children }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  const navLinks = [
+    { to: '/', label: t('nav.home') },
+    { to: '/dashboard', label: t('nav.dashboard') },
+    { to: '/symptom-form', label: t('nav.newAssessment') },
+    { to: '/history', label: t('nav.history') },
+  ]
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -18,7 +22,6 @@ export default function PageShell({ title, description, children }) {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #040810 0%, #0a1628 50%, #062a3a 100%)' }}>
-      {/* Ambient glow blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full blur-3xl"
           style={{ background: 'rgba(6,148,162,0.12)' }} />
@@ -26,7 +29,6 @@ export default function PageShell({ title, description, children }) {
           style={{ background: 'rgba(22,189,202,0.06)' }} />
       </div>
 
-      {/* Navbar */}
       <header className="sticky top-0 z-50 backdrop-blur-xl"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(4,8,16,0.85)' }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
@@ -38,8 +40,8 @@ export default function PageShell({ title, description, children }) {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-white leading-none">MediAI</p>
-              <p className="text-xs text-brand-400 leading-none mt-0.5">Health Monitor</p>
+              <p className="text-sm font-bold text-white leading-none">{t('nav.brand')}</p>
+              <p className="text-xs text-brand-400 leading-none mt-0.5">{t('nav.brandSub')}</p>
             </div>
           </Link>
 
@@ -59,6 +61,7 @@ export default function PageShell({ title, description, children }) {
                 {label}
               </Link>
             ))}
+            <LanguageSwitcher />
             <button
               onClick={handleLogout}
               className="rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ml-2"
@@ -66,16 +69,15 @@ export default function PageShell({ title, description, children }) {
               onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,0.4)' }}
               onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
             >
-              Log out
+              {t('nav.logout')}
             </button>
           </nav>
         </div>
       </header>
 
-      {/* Page heading */}
       <div className="mx-auto max-w-6xl px-4 pt-10 pb-6 sm:px-6">
         <div className="animate-fade-in">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-400 mb-2">Hospital AI Monitor</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-400 mb-2">{t('nav.tagline')}</p>
           <h1 className="text-3xl font-bold text-white sm:text-4xl">{title}</h1>
           {description && <p className="mt-2 max-w-2xl text-slate-400 text-sm leading-relaxed">{description}</p>}
         </div>
