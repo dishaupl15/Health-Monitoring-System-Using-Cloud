@@ -7,16 +7,11 @@ phases:
       nodejs: 20
 
     commands:
-      - echo "Moving to frontend folder"
-
       - cd agentic-health-monitor/frontend
-
-      - echo "Installing dependencies"
       - npm install
 
   build:
     commands:
-      - echo "Building frontend"
       - npm run build
 
 artifacts:
