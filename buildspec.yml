@@ -7,19 +7,20 @@ phases:
       nodejs: 20
 
     commands:
-      - echo "Entering frontend folder"
-      - cd frontend
+      - echo "Moving to frontend folder"
+
+      - cd agentic-health-monitor/frontend
 
       - echo "Installing dependencies"
       - npm install
 
   build:
     commands:
-      - echo "Building Vite frontend"
+      - echo "Building frontend"
       - npm run build
 
 artifacts:
   files:
     - '**/*'
 
-  base-directory: frontend/dist
+  base-directory: agentic-health-monitor/frontend/dist

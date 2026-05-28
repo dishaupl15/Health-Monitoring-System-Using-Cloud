@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 
 files:
-  - source: frontend/dist
+  - source: agentic-health-monitor/frontend/dist
     destination: /usr/share/nginx/html
 
 hooks:
