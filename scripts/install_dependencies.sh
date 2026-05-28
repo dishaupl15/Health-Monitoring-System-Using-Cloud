@@ -1,22 +1,22 @@
 #!/bin/bash
-set -e
 
-echo "Moving to app directory"
-cd /home/ec2-user/Agentic-Health-Monitor || exit 1
+echo "=============================="
+echo "Installing Application"
+echo "=============================="
 
-echo "Fixing permissions"
-sudo chown -R ec2-user:ec2-user .
+# Update system
+yum update -y
 
-echo "Checking files"
-ls -la
+# Install nginx
+amazon-linux-extras install nginx1 -y || yum install nginx -y
 
-echo "Installing dependencies"
-npm install
+# Start nginx
+systemctl start nginx
 
-echo "Building project"
-npm run build
+# Enable nginx on boot
+systemctl enable nginx
 
-echo "Checking dist folder"
-ls -la dist
+# Remove old files
+rm -rf /usr/share/nginx/html/*
 
-echo "Done"
+echo "Deployment files ready"

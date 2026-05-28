@@ -1,46 +1,25 @@
-# version: 0.2
-
-# phases:
-#   install:
-#     runtime-versions:
-#       python: 3.11
-#       nodejs: 18
-
-#   pre_build:
-#     commands:
-#       - echo Installing backend dependencies
-#       - cd agentic-health-monitor/backend
-#       - pip install -r requirements.txt
-#       - cd ../frontend
-#       - npm install
-#       - cd ../..
-
-#   build:
-#     commands:
-#       - echo Building frontend
-#       - cd agentic-health-monitor/frontend
-#       - npm run build
-#       - cd ../..
-#       - echo Build completed successfully
-
-# artifacts:
-#   files:
-#     - '**/*'
-
 version: 0.2
 
 phases:
+
   install:
     runtime-versions:
       nodejs: 20
 
     commands:
+      - echo "Entering frontend folder"
+      - cd frontend
+
+      - echo "Installing dependencies"
       - npm install
 
   build:
     commands:
+      - echo "Building Vite frontend"
       - npm run build
 
 artifacts:
   files:
     - '**/*'
+
+  base-directory: frontend/dist
